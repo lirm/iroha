@@ -43,7 +43,7 @@ namespace http {
 
     json responseError(std::string message){
         return json({
-                            {"message", message},
+                            {"message", std::move(message)},
                             {"status", 400}
                     });
     }
@@ -72,22 +72,23 @@ namespace http {
     }
 
     void server() {
-        logger::info("server", "initialize server!");
+        logger::info("server") << "initialize server!";
         Cappuccino::Cappuccino( 0, nullptr);
 
-        Cappuccino::route<Cappuccino::Method::POST>( "/account/register",[](std::shared_ptr<Request> request) -> Response{
+        Cappuccino::route<Cappuccino::Method::POST>("/account/register", [](std::shared_ptr<Request> request) -> Response {
             auto res = Response(request);
             auto data = request->json();
-            std::string uuid = "";
+            std::string uuid;
+
             if(!data.empty()){
                 try{
 
-                    auto publicKey = data["publicKey"].get<std::string>();
-                    auto alias     = data["alias"].get<std::string>();
-                    auto timestamp = data["timestamp"].get<int>();
+                    const auto publicKey = data["publicKey"].get<std::string>();
+                    const auto alias     = data["alias"].get<std::string>();
+                    const auto timestamp = data["timestamp"].get<int>();
 
                     uuid = hash::sha3_256_hex(publicKey);
-                    if(repository::account::findByUuid(uuid).publicKey == "") {
+                    if(repository::account::findByUuid(uuid).publicKey.empty()) {
 
                         auto event = ConsensusEvent < Transaction < Add < object::Account >> > (
                             publicKey.c_str(),
@@ -136,11 +137,11 @@ namespace http {
             std::string uuid = request->params("uuid");
             auto res = Response(request);
 
-            logger::debug("Cappuccino", "param's uuid is " + uuid);
+            logger::debug("Cappuccino") << "param's uuid is " << uuid;
             object::Account account = repository::account::findByUuid(uuid);
 
-            logger::debug("Cappuccino", "name: " + account.name);
-            logger::debug("Cappuccino", "publicKey: " + account.publicKey);
+            logger::debug("Cappuccino") << "name: "         << account.name;
+            logger::debug("Cappuccino") << "publicKey: "    << account.publicKey;
 
             json assets = json::array();
             for(auto&& as: account.assets){
@@ -164,13 +165,13 @@ namespace http {
             auto data = request->json();
             if(!data.empty()){
                 try{
-                    auto assetUuid = data["asset-uuid"].get<std::string>();
-                    auto timestamp = data["timestamp"].get<int>();
-                    auto signature = data["signature"].get<std::string>();
-                    auto command   = data["params"]["command"].get<std::string>();
-                    auto value     = data["params"]["value"].get<std::string>();
-                    auto sender    = data["params"]["sender"].get<std::string>();
-                    auto receiver  = data["params"]["receiver"].get<std::string>();
+                    const auto assetUuid = data["asset-uuid"].get<std::string>();
+                    const auto timestamp = data["timestamp"].get<int>();
+                    const auto signature = data["signature"].get<std::string>();
+                    const auto command   = data["params"]["command"].get<std::string>();
+                    const auto value     = data["params"]["value"].get<std::string>();
+                    const auto sender    = data["params"]["sender"].get<std::string>();
+                    const auto receiver  = data["params"]["receiver"].get<std::string>();
 
                     auto event = ConsensusEvent<Transaction<Transfer<Asset>>>(
                         sender.c_str(),
@@ -262,7 +263,7 @@ namespace http {
             return res;
         });
 
-        logger::info("server", "start server!");
+        logger::info("server") << "start server!";
         // runnning
         Cappuccino::run();
 
